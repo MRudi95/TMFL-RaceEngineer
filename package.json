@@ -9,9 +9,11 @@
   },
   "dependencies": {
     "@mdi/font": "5.9.55",
+    "@mdi/js": "^6.1.95",
     "core-js": "^3.6.5",
     "roboto-fontface": "*",
     "vue": "^3.0.0",
+    "vue-slider-component": "^4.0.0-beta.4",
     "vuetify": "^3.0.0-alpha.10",
     "vuex": "^4.0.0-0"
   },
