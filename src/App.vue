@@ -1,6 +1,10 @@
 <template>
   <v-app>
+    <!-- Top Bar -->
     <v-app-bar app>
+      <a href="https://trackmania-formula-league.com">
+        <v-img src="@/assets/tmfl_logo.png" width="12em"> </v-img>
+      </a>
       <v-row justify="center" align="center">
         <a
           class="text-h3 pepo_green pepo_link"
@@ -20,6 +24,7 @@
       </v-row>
     </v-app-bar>
 
+    <!-- Analysis Part -->
     <v-navigation-drawer app permanent>
       <div class="text-h5 text-center mt-2" justify="center">
         Stint Analysis
@@ -78,17 +83,18 @@
       </div>
 
       <div class="d-flex mt-5 ml-1 text-center">
-        <div class="text-h6">Ø Fuel</div>
+        <div class="text-h6">Ø Fuel/Lap</div>
         <div class="text-h5 flex-grow-1">{{ analysis.avgFuel }} L</div>
       </div>
 
       <div class="d-flex mt-5 ml-1">
-        <div class="text-h6 text-center">Ø Tires</div>
+        <div class="text-h6 text-center">Ø Tires/Lap</div>
         <div class="text-h5 text-center flex-grow-1">
           {{ analysis.avgTires }} %
         </div>
       </div>
 
+      <!-- Table Part -->
       <div class="mt-12 mb-2">
         <vue-slider
           class="mx-4"
@@ -108,22 +114,92 @@
         </v-row>
         <v-container class="tableScrollbar">
           <v-row v-for="pitOption in analysis.pitOptions" :key="pitOption.fuel">
-            <!-- put cards into columns => then put color changer in cards -->
+            <v-col> {{ pitOption.lap }} </v-col>
             <v-col>
-              {{ pitOption.lap }}
+              <v-card :color="colorsAnalysisTable(pitOption.fuel)">
+                <div v-if="pitOption.fuel > 0">{{ pitOption.fuel }} L</div>
+                <v-icon v-else> mdi-skull </v-icon>
+                <!-- <v-icon v-else> mdi-skull-crossbones </v-icon> -->
+              </v-card>
             </v-col>
             <v-col>
-               {{ pitOption.fuel }} L 
-            </v-col>
-            <v-col> 
-              {{ pitOption.tires }} % 
+              <v-card :color="colorsAnalysisTable(pitOption.tires)">
+                <div v-if="pitOption.tires > 0">{{ pitOption.tires }} %</div>
+                <v-icon v-else> mdi-skull </v-icon>
+                <!-- <v-icon v-else> mdi-skull-crossbones </v-icon> -->
+              </v-card>
             </v-col>
           </v-row>
         </v-container>
       </v-container>
     </v-navigation-drawer>
 
-    <div>
+    <!-- Strategy Part -->
+    <v-main app>
+      <v-container>
+        <v-row justify="center" align="center">
+          <div class="text-h5 text-center mt-2" justify="center">
+            Strategy Picker
+          </div>
+        </v-row>
+        <!-- Inputs -->
+        <v-row class="mt-12 mb-7" justify="center" align="center">
+          <div class="strategyLapsSliderWidth d-flex">
+            <!-- <div>Laps</div> -->
+            <v-icon>mdi-flag-checkered</v-icon>
+            <vue-slider
+              class="flex-grow-1 mx-4 pt-3"
+              v-model="racelaps"
+              :tooltip="'always'"
+              :min="20"
+              :max="80"
+            ></vue-slider>
+          </div>
+          <div class="mx-5"></div>
+          <div class="strategyStopsSliderWidth d-flex">
+            <!-- <div>Laps</div> -->
+            <v-icon>mdi-bus-stop-covered</v-icon>
+            <vue-slider
+              class="flex-grow-1 mx-4 pt-3"
+              v-model="stopsFromTo"
+              :tooltip="'always'"
+              :min="2"
+              :max="8"
+            ></vue-slider>
+          </div>
+        </v-row>
+        <!-- Calculated Strategies -->
+        <v-row justify="center" align="top">
+          <v-card
+            class="mx-2"
+            elevation="5"
+            v-for="strat in stratList"
+            :key="strat.strat"
+          >
+            <v-card-title>{{ strat.strat }} Stops</v-card-title>
+            <v-divider></v-divider>
+            <v-card-text class="text-center">
+              <div class="text-h6">{{ strat.fuelPerLap }} L</div>
+              <div class="text-h6">{{ strat.fuelPerLap }} %</div>
+            </v-card-text>
+            <v-divider></v-divider>
+            <v-card-title>Strategies</v-card-title>
+            <div v-if="strat.stintOptions">
+              <v-card
+                class="text-center ma-1"
+                color="amber"
+                v-for="stintOption in strat.stintOptions"
+                :key="stintOption"
+              >
+              {{ stintOption.join() }}
+              </v-card>
+            </div>
+          </v-card>
+        </v-row>
+      </v-container>
+    </v-main>
+
+    <!-- <div>
       <div class="horizontal" name="strategyPart">
         <div>
           <input v-model="racelaps" />
@@ -146,12 +222,12 @@
           </div>
         </div>
       </div>
-    </div>
+    </div> -->
   </v-app>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, watchEffect } from "vue";
+import { computed, defineComponent, ref, watchEffect } from "vue";
 import { calculateStrategy, Strategy } from "@/calculations/strategy";
 import { Analysis, calculateAnalysis } from "@/calculations/analysis";
 
@@ -165,21 +241,12 @@ export default defineComponent({
   },
   setup() {
     const racelaps = ref(50);
-    const stratsFrom = ref(3);
-    const stratsTo = ref(6);
+    const stopsFromTo = ref([3, 6]);
     const stratList = ref(Array<Strategy>());
 
     watchEffect(() => {
-      if (!stratsFrom.value || !stratsTo.value) {
-        return;
-      }
-
-      if (racelaps.value < 10 || racelaps.value > 100) {
-        return;
-      }
-
       stratList.value = [];
-      for (let index = Number(stratsFrom.value); index <= stratsTo.value; index++) {
+      for (let index = stopsFromTo.value[0]; index <= stopsFromTo.value[1]; index++) {
         stratList.value.push(calculateStrategy(racelaps.value, index));
       }
     });
@@ -218,18 +285,29 @@ export default defineComponent({
       } else if (value <= 30) {
         color = "red";
       } else if (value <= 50) {
-        color = "yellow";
+        color = "amber";
       } else {
         color = "green"
       }
       return color;
     }
 
+    const strategyColor = computed(() => {
+      
+    });
+
+    const analysisBreakpoints = computed(() => {
+      const breakpoints = [];
+      analysis.value.pitOptions.forEach(() => {
+
+      });
+    });
+
     return {
       racelaps,
-      stratsFrom,
-      stratsTo,
+      stopsFromTo,
       stratList,
+      strategyColor,
 
       drivenLaps,
       restFuel,
@@ -261,6 +339,9 @@ input {
   text-decoration: none;
 }
 
+/* figure height for table to fit to screen */
+/* figure out why the scrollbar on the right is always there */
+
 .tableScrollbar {
   overflow: auto;
   height: 45vh;
@@ -268,5 +349,13 @@ input {
 
 .headerRow {
   background: #404040;
+}
+
+.strategyLapsSliderWidth {
+  width: 25vw;
+}
+
+.strategyStopsSliderWidth {
+  width: 15vw;
 }
 </style>
