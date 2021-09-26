@@ -169,7 +169,7 @@
           </div>
         </v-row>
         <!-- Calculated Strategies -->
-        <v-row justify="center" align="top">
+        <v-row justify="center">
           <v-card
             class="mx-2"
             elevation="5"
@@ -187,10 +187,11 @@
             <div v-if="strat.stintOptions">
               <v-card
                 class="text-center ma-1"
-                color="amber"
+                color="deep-purple"
                 v-for="stintOption in strat.stintOptions"
                 :key="stintOption"
               >
+              <!-- :color="strategyStintColor(stintOption)" -->
               {{ stintOption.join() }}
               </v-card>
             </div>
@@ -198,37 +199,12 @@
         </v-row>
       </v-container>
     </v-main>
-
-    <!-- <div>
-      <div class="horizontal" name="strategyPart">
-        <div>
-          <input v-model="racelaps" />
-          <input v-model="stratsFrom" />
-          <input v-model="stratsTo" />
-        </div>
-        <div class="strats" v-for="strat in stratList" :key="strat.strat">
-          <h4>{{ strat.strat }} Stops</h4>
-          <h5>{{ strat.fuelPerLap }} l</h5>
-          <h5>{{ strat.fuelPerLap }} %</h5>
-          <h4>Stintoptions</h4>
-          <div v-if="strat.stintOptions">
-            <button
-              class="vertical"
-              v-for="stintOption in strat.stintOptions"
-              :key="stintOption"
-            >
-              {{ stintOption.join() }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div> -->
   </v-app>
 </template>
 
 <script lang="ts">
 import { computed, defineComponent, ref, watchEffect } from "vue";
-import { calculateStrategy, Strategy } from "@/calculations/strategy";
+import { calculateBreakpoints, calculateStrategy, StintOption, Strategy } from "@/calculations/strategy";
 import { Analysis, calculateAnalysis } from "@/calculations/analysis";
 
 import VueSlider from "vue-slider-component";
@@ -292,29 +268,48 @@ export default defineComponent({
       return color;
     }
 
-    const strategyColor = computed(() => {
-      
-    });
+    function strategyStintColor(stintOption: StintOption) {
+      const longestStint = stintOption[0];
+      const defaultColor = "brown";
+      console.log(analysisBreakpoints.value);
+      if(longestStint == analysisBreakpoints.value.thirtyBreakpointRisky){
+        return "teal"
+      }
+      if(longestStint == analysisBreakpoints.value.thirtyBreakpointSave){
+        return "green"
+      }
+
+      if(analysisBreakpoints.value.zeroBreakpointRisky < 0){
+        return defaultColor;
+      }
+      if(longestStint > analysisBreakpoints.value.zeroBreakpointRisky){
+        return "black";
+      }
+      if(longestStint == analysisBreakpoints.value.zeroBreakpointRisky){
+        return "purple"
+      }
+      if(longestStint == analysisBreakpoints.value.zeroBreakpointSave){
+        return "pink"
+      }
+
+      return defaultColor;
+    };
 
     const analysisBreakpoints = computed(() => {
-      const breakpoints = [];
-      analysis.value.pitOptions.forEach(() => {
-
-      });
+      return calculateBreakpoints(analysis.value);
     });
 
     return {
       racelaps,
       stopsFromTo,
       stratList,
-      strategyColor,
+      strategyStintColor,
 
       drivenLaps,
       restFuel,
       restTires,
       lapFromTo,
       analysis,
-
       colorsAnalysisSlider,
       colorsAnalysisTable,
     };
@@ -323,6 +318,15 @@ export default defineComponent({
 </script>
 
 <style>
+html{
+  /* hide scrollbar firefox */
+  scrollbar-width: none;
+}
+/* hide scrollbar chrome */
+html::-webkit-scrollbar{
+  display: none;
+}
+
 input {
   color: white;
 }
@@ -345,6 +349,12 @@ input {
 .tableScrollbar {
   overflow: auto;
   height: 45vh;
+  /* hide scrollbar firefox */
+  scrollbar-width: none;
+}
+/* hide scrollbar chrome */
+.tableScrollbar::-webkit-scrollbar{ 
+  /* display: none; */
 }
 
 .headerRow {

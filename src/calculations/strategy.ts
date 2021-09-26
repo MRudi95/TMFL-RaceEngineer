@@ -1,15 +1,25 @@
-export interface Strategy {
-    strat: number;
-    numOfStints: number;
-    numOfLaps: number;
+import { Analysis } from "./analysis";
 
-    lapsPerStint?: number;
-    remainingLaps?: number;
-    fuelPerLap?: number;
-    stintOptions?: StintOption[];
+export interface Strategy {
+  strat: number;
+  numOfStints: number;
+  numOfLaps: number;
+
+  lapsPerStint?: number;
+  remainingLaps?: number;
+  fuelPerLap?: number;
+  stintOptions?: StintOption[];
 }
 
-type StintOption = number[];
+export type StintOption = number[];
+
+//has the lapnumbers, for when 30% fuel/tires and 0% fuel/tires are reached
+export interface Breakpoints {
+  thirtyBreakpointRisky: number;
+  thirtyBreakpointSave: number;
+  zeroBreakpointRisky: number;
+  zeroBreakpointSave: number;
+}
 
 export function calculateStrategy(numOfLaps: number, stratNum: number): Strategy {
   // initialize strategy
@@ -27,12 +37,12 @@ export function calculateStrategy(numOfLaps: number, stratNum: number): Strategy
   return strategy;
 }
 
-function calculateLaps(strategy: Strategy): void{
+function calculateLaps(strategy: Strategy): void {
   strategy.lapsPerStint = Math.floor(strategy.numOfLaps / strategy.numOfStints);
   strategy.remainingLaps = strategy.numOfLaps % strategy.numOfStints;
 }
 
-function calculateFuelPerLap(strategy: Strategy): void{
+function calculateFuelPerLap(strategy: Strategy): void {
   if (!strategy.lapsPerStint || strategy.remainingLaps == undefined) {
     return;
   }
@@ -47,7 +57,7 @@ function calculateFuelPerLap(strategy: Strategy): void{
   strategy.fuelPerLap = parseFloat(fuelPerLap.toFixed(1));
 }
 
-function calculateStintOptions(strategy: Strategy): void{
+function calculateStintOptions(strategy: Strategy): void {
   if (strategy.remainingLaps == undefined) {
     return;
   }
@@ -90,4 +100,31 @@ function findCombinationsUtil(helperArray: number[], index: number, num: number,
     helperArray[index] = k;
     findCombinationsUtil(helperArray, index + 1, num, reducedNum - k, outputArray);
   }
+}
+
+//rework later to not use the pitoptions, but just avgFuel/avgTires and the stintOptions
+//filters still need adjustment
+export function calculateBreakpoints(analysis: Analysis): Breakpoints {
+  //filter out all options below 0% and options that still have enough for more laps
+  //seems good
+  const filterZero = analysis.pitOptions.filter((pitOption) => {
+    return pitOption.fuel > 0 && pitOption.tires > 0
+      && (pitOption.fuel - analysis.avgFuel <= 0 || pitOption.tires - analysis.avgTires <= 0);
+  });
+  const zeroBreakpoint = filterZero.pop()?.lap || -1;
+
+  //filter out all options that go more than one lap below 30% and options that still have enough for more laps
+  //needs work ... description is shit
+  const filterThirty = analysis.pitOptions.filter((pitOption) => {
+    return pitOption.fuel + analysis.avgFuel >= 30 - analysis.avgFuel / 2 && pitOption.fuel <= 30 - analysis.avgFuel / 2
+      || pitOption.tires + analysis.avgTires >= 30 - analysis.avgTires / 2 && pitOption.tires <= 30 - analysis.avgTires / 2;
+  });
+  const thirtyBreakpoint = filterThirty.pop()?.lap || -1;
+
+  return {
+    thirtyBreakpointRisky: thirtyBreakpoint,
+    thirtyBreakpointSave: thirtyBreakpoint - 1, //do exclusively later
+    zeroBreakpointRisky: zeroBreakpoint,
+    zeroBreakpointSave: zeroBreakpoint - 1, //do exclusively later
+  };
 }
