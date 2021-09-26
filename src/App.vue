@@ -354,7 +354,7 @@ input {
 }
 /* hide scrollbar chrome */
 .tableScrollbar::-webkit-scrollbar{ 
-  /* display: none; */
+  display: none;
 }
 
 .headerRow {
