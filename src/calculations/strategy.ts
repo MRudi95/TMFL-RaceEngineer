@@ -21,7 +21,7 @@ export interface Breakpoints {
   zeroBreakpointSave: number;
 }
 
-export function calculateStrategy(numOfLaps: number, stratNum: number): Strategy {
+export function calculateStrategy(numOfLaps: number, stratNum: number): Required<Strategy> {
   // initialize strategy
   const strategy: Strategy = {
     strat: stratNum,
@@ -34,7 +34,8 @@ export function calculateStrategy(numOfLaps: number, stratNum: number): Strategy
   calculateFuelPerLap(strategy);
   calculateStintOptions(strategy);
 
-  return strategy;
+  //Required makes sure the optional properties are not optional
+  return strategy as Required<Strategy>;
 }
 
 function calculateLaps(strategy: Strategy): void {
@@ -102,29 +103,34 @@ function findCombinationsUtil(helperArray: number[], index: number, num: number,
   }
 }
 
-//rework later to not use the pitoptions, but just avgFuel/avgTires and the stintOptions
-//filters still need adjustment
-export function calculateBreakpoints(analysis: Analysis): Breakpoints {
-  //filter out all options below 0% and options that still have enough for more laps
-  //seems good
-  const filterZero = analysis.pitOptions.filter((pitOption) => {
-    return pitOption.fuel > 0 && pitOption.tires > 0
-      && (pitOption.fuel - analysis.avgFuel <= 0 || pitOption.tires - analysis.avgTires <= 0);
-  });
-  const zeroBreakpoint = filterZero.pop()?.lap || -1;
+export enum strategyTypes{
+  thirtyRisky,
+  thirtySave,
+  zeroRisky,
+  zeroSave,
+  dead,
+  whatever,
+}
+//return which which type it is as enum (30risky, 30save, 0risky, 0save, dead, whatever)
+export function calculateStrategyType(lap: number, avgFuel: number, avgTires: number): strategyTypes{
+  const remainingFuel = 100 - lap * avgFuel;
+  const remainingTires = 100 - lap * avgTires;
 
-  //filter out all options that go more than one lap below 30% and options that still have enough for more laps
-  //needs work ... description is shit
-  const filterThirty = analysis.pitOptions.filter((pitOption) => {
-    return pitOption.fuel + analysis.avgFuel >= 30 - analysis.avgFuel / 2 && pitOption.fuel <= 30 - analysis.avgFuel / 2
-      || pitOption.tires + analysis.avgTires >= 30 - analysis.avgTires / 2 && pitOption.tires <= 30 - analysis.avgTires / 2;
-  });
-  const thirtyBreakpoint = filterThirty.pop()?.lap || -1;
+  if(remainingFuel <= 0 || remainingTires <= 0){
+    return strategyTypes.dead;
+  }
+  if(remainingFuel - avgFuel <= 0 || remainingTires - avgTires <= 0){
+    return strategyTypes.zeroRisky;
+  }
+  if(remainingFuel - 2*avgFuel <= 0 || remainingTires - 2*avgTires <= 0){
+    return strategyTypes.zeroSave;
+  }
+  if(remainingTires + avgTires*1.5 >= 30 && remainingTires + avgTires*0.5 <= 30){
+    return strategyTypes.thirtyRisky;
+  }
+  if(remainingTires + avgTires*0.5 >= 30 && remainingTires - avgTires*0.5 <= 30){
+    return strategyTypes.thirtySave;
+  }
 
-  return {
-    thirtyBreakpointRisky: thirtyBreakpoint,
-    thirtyBreakpointSave: thirtyBreakpoint - 1, //do exclusively later
-    zeroBreakpointRisky: zeroBreakpoint,
-    zeroBreakpointSave: zeroBreakpoint - 1, //do exclusively later
-  };
+  return strategyTypes.whatever;
 }

@@ -184,17 +184,14 @@
             </v-card-text>
             <v-divider></v-divider>
             <v-card-title>Strategies</v-card-title>
-            <div v-if="strat.stintOptions">
-              <v-card
-                class="text-center ma-1"
-                color="deep-purple"
-                v-for="stintOption in strat.stintOptions"
-                :key="stintOption"
-              >
-              <!-- :color="strategyStintColor(stintOption)" -->
+            <v-card
+              class="text-center ma-1"
+              :color="strategyStintColor(stintOption)"
+              v-for="stintOption in strat.stintOptions"
+              :key="stintOption"
+            >
               {{ stintOption.join() }}
-              </v-card>
-            </div>
+            </v-card>
           </v-card>
         </v-row>
       </v-container>
@@ -204,7 +201,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, ref, watchEffect } from "vue";
-import { calculateBreakpoints, calculateStrategy, StintOption, Strategy } from "@/calculations/strategy";
+import { calculateStrategy, calculateStrategyType, StintOption, Strategy, strategyTypes } from "@/calculations/strategy";
 import { Analysis, calculateAnalysis } from "@/calculations/analysis";
 
 import VueSlider from "vue-slider-component";
@@ -218,7 +215,7 @@ export default defineComponent({
   setup() {
     const racelaps = ref(50);
     const stopsFromTo = ref([3, 6]);
-    const stratList = ref(Array<Strategy>());
+    const stratList = ref(Array<Required<Strategy>>());
 
     watchEffect(() => {
       stratList.value = [];
@@ -234,6 +231,7 @@ export default defineComponent({
     const lapFromTo = ref([5, 15]);
     const analysis = ref(Analysis());
 
+    //sanitize input for fuel and tires
     watchEffect(() => {
       if (!drivenLaps.value || !restFuel.value || !restTires.value) {
         return;
@@ -268,36 +266,28 @@ export default defineComponent({
       return color;
     }
 
-    function strategyStintColor(stintOption: StintOption) {
+    function strategyStintColor(stintOption: StintOption){
       const longestStint = stintOption[0];
-      const defaultColor = "brown";
-      console.log(analysisBreakpoints.value);
-      if(longestStint == analysisBreakpoints.value.thirtyBreakpointRisky){
-        return "teal"
+      const strat: strategyTypes = calculateStrategyType(longestStint, analysis.value.avgFuel, analysis.value.avgTires);
+      if(strat == strategyTypes.whatever){
+        return "brown";
       }
-      if(longestStint == analysisBreakpoints.value.thirtyBreakpointSave){
-        return "green"
-      }
-
-      if(analysisBreakpoints.value.zeroBreakpointRisky < 0){
-        return defaultColor;
-      }
-      if(longestStint > analysisBreakpoints.value.zeroBreakpointRisky){
+      if(strat == strategyTypes.dead){
         return "black";
       }
-      if(longestStint == analysisBreakpoints.value.zeroBreakpointRisky){
-        return "purple"
+      if(strat == strategyTypes.zeroRisky){
+        return "purple";
       }
-      if(longestStint == analysisBreakpoints.value.zeroBreakpointSave){
-        return "pink"
+      if(strat == strategyTypes.zeroSave){
+        return "pink";
       }
-
-      return defaultColor;
-    };
-
-    const analysisBreakpoints = computed(() => {
-      return calculateBreakpoints(analysis.value);
-    });
+      if(strat == strategyTypes.thirtyRisky){
+        return "green";
+      }
+      if(strat == strategyTypes.thirtySave){
+        return "teal";
+      }
+    }
 
     return {
       racelaps,
@@ -318,12 +308,12 @@ export default defineComponent({
 </script>
 
 <style>
-html{
+html {
   /* hide scrollbar firefox */
   scrollbar-width: none;
 }
 /* hide scrollbar chrome */
-html::-webkit-scrollbar{
+html::-webkit-scrollbar {
   display: none;
 }
 
@@ -353,7 +343,7 @@ input {
   scrollbar-width: none;
 }
 /* hide scrollbar chrome */
-.tableScrollbar::-webkit-scrollbar{ 
+.tableScrollbar::-webkit-scrollbar {
   display: none;
 }
 
