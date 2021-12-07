@@ -1,5 +1,3 @@
-import { Analysis } from "./analysis";
-
 export interface Strategy {
   strat: number;
   numOfStints: number;
@@ -8,10 +6,10 @@ export interface Strategy {
   lapsPerStint?: number;
   remainingLaps?: number;
   fuelPerLap?: number;
-  stintOptions?: StintOption[];
+  stintPossibilities?: StintPossibility[];
 }
 
-export type StintOption = number[];
+export type StintPossibility = number[];
 
 //has the lapnumbers, for when 30% fuel/tires and 0% fuel/tires are reached
 export interface Breakpoints {
@@ -69,12 +67,12 @@ function calculateStintOptions(strategy: Strategy): void {
   const combinations: number[][] = findCombinations(strategy.remainingLaps);
 
   // adds the possible combinations onto the basestints
-  const stintOptions: StintOption[] = [];
+  const stintOptions: StintPossibility[] = [];
   combinations.forEach((comb) => {
     stintOptions.push(baseStints.map((num, idx) => num + (comb[idx] | 0)));
   });
 
-  strategy.stintOptions = stintOptions;
+  strategy.stintPossibilities = stintOptions;
 }
 
 // finds the combinations of the remaining laps: 3 laps => [[1,1,1],[2,1],[3]]
